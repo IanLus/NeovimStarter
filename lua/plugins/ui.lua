@@ -461,7 +461,7 @@ return {
           desc = "Double escape to normal mode",
         }
         vim.keymap.set("t", "<Esc>", on_escape, esc_opts)
-        vim.keymap.set("t", "<C-[>", on_escape, esc_opts)
+        -- vim.keymap.set("t", "<C-[>", on_escape, esc_opts)
       end
 
       events.on(events.SESSION_CREATED, function(payload)

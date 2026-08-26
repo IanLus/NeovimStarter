@@ -340,7 +340,8 @@ return {
                   vim.schedule(function()
                     local indent_str = vim.bo.expandtab and string.rep(" ", target_indent)
                       or string.rep("\t", math.floor(target_indent / vim.fn.shiftwidth()))
-                    vim.api.nvim_buf_set_lines(0, line - 1, line, false, { indent_str })
+                    -- Replace only leading whitespace so content after the cursor is kept.
+                    vim.api.nvim_buf_set_text(0, line - 1, 0, line - 1, cur_indent, { indent_str })
                     vim.api.nvim_win_set_cursor(0, { line, #indent_str })
                   end)
                   return true

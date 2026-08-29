@@ -69,6 +69,39 @@ return {
       inlay_hints = {
         enabled = false,
       },
+      servers = {
+        tailwindcss = {
+          settings = {
+            tailwindCSS = {
+              classFunctions = { "cva", "cx", "cn", "clsx" },
+              experimental = {
+                classRegex = {
+                  { "className\\s*:\\s*[\"'`]([^\"'`]+)[\"'`]" },
+                  {
+                    "classNames\\s*[=:]\\s*\\{([\\s\\S]*?)\\}",
+                    "[`'\"`]([^'\"`;]*)[`'\"`]",
+                  },
+                },
+              },
+            },
+          },
+        },
+        clangd = {
+          -- cmd = {
+          --   "clangd",
+          --   "--query-driver=g++.exe", -- 指定编译器路径
+          --   "--background-index",
+          --   "--clang-tidy",
+          --   "--completion-style=detailed",
+          -- },
+          init_options = {
+            fallbackFlags = {
+              -- "-std=c++17",
+              "--target=x86_64-w64-windows-gnu",
+            },
+          },
+        },
+      },
     },
   },
 }

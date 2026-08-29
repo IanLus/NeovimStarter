@@ -70,6 +70,22 @@ return {
         enabled = false,
       },
       servers = {
+        tailwindcss = {
+          settings = {
+            tailwindCSS = {
+              classFunctions = { "cva", "cx", "cn", "clsx" },
+              experimental = {
+                classRegex = {
+                  { "className\\s*:\\s*[\"'`]([^\"'`]+)[\"'`]" },
+                  {
+                    "classNames\\s*[=:]\\s*\\{([\\s\\S]*?)\\}",
+                    "[`'\"`]([^'\"`;]*)[`'\"`]",
+                  },
+                },
+              },
+            },
+          },
+        },
         clangd = {
           -- cmd = {
           --   "clangd",

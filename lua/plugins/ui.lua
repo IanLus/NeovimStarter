@@ -23,13 +23,12 @@ return {
     },
     ---@type neotree.Config
     opts = {
-      close_if_last_window = false,
       window = {
         width = 30,
       },
       filesystem = {
         filtered_items = { visible = false, hide_dotfiles = false },
-        follow_current_file = { enabled = true, leave_dirs_open = true },
+        follow_current_file = { enabled = true },
         group_empty_dirs = true,
         use_libuv_file_watcher = true,
       },

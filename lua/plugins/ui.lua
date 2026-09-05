@@ -206,6 +206,7 @@ return {
       indent = { enabled = true },
       terminal = {
         win = {
+          -- position = "float", -- 默认bottom
           keys = {
             hide_slash = false,
             hide_underscore = false,
@@ -436,7 +437,7 @@ return {
     pin = true,
     opts = {
       keymaps = {
-        toggle_manager = "<C-/>",
+        toggle_manager = "<leader>f/",
         prev_session = "<C-k>",
         next_session = "<C-j>",
         hide_terminal = "<C-q>",
@@ -446,29 +447,10 @@ return {
     config = function(_, opts)
       require("luxterm").setup(opts)
 
-      -- LazyVim 在 VeryLazy 会用 Snacks.terminal 覆盖 <C-/>，需在 LazyVimKeymaps 之后重绑
-      local function bind_toggle_manager()
-        local key = opts.keymaps.toggle_manager
-        local toggle = function()
-          require("luxterm.core").toggle_manager()
-        end
-        local map_opts = { silent = true, desc = "Toggle Luxterm manager" }
-        for _, lhs in ipairs({ "<C-/>", "<C-_>", key }) do
-          pcall(vim.keymap.del, { "n", "t" }, lhs)
-        end
-        vim.keymap.set({ "n", "t" }, key, toggle, map_opts)
-        if key == "<C-/>" then
-          vim.keymap.set({ "n", "t" }, "<C-_>", toggle, { silent = true, desc = "which_key_ignore" })
-        end
-      end
-      vim.api.nvim_create_autocmd("User", {
-        pattern = "LazyVimKeymaps",
-        group = vim.api.nvim_create_augroup("luxterm_keymaps", { clear = true }),
-        callback = bind_toggle_manager,
-      })
-      if vim.v.vim_did_enter == 1 then
-        vim.schedule(bind_toggle_manager)
-      end
+      -- 与 <leader>ft 一样出现在 which-key 的 f 组
+      vim.keymap.set({ "n", "t" }, "<leader>f/", function()
+        require("luxterm.core").toggle_manager()
+      end, { silent = true, desc = "Terminal (Luxterm)" })
 
       -- 补双击 <Esc>/<C-[> → normal（上游见 floating_window.lua:345-347）
       local events = require("luxterm.events")

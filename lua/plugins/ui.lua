@@ -444,58 +444,6 @@ return {
       },
       session_as_buffer = false,
     },
-    config = function(_, opts)
-      require("luxterm").setup(opts)
-
-      -- 与 <leader>ft 一样出现在 which-key 的 f 组
-      vim.keymap.set({ "n", "t" }, "<leader>f/", function()
-        require("luxterm.core").toggle_manager()
-      end, { silent = true, desc = "Terminal (Luxterm)" })
-
-      -- 补双击 <Esc>/<C-[> → normal（上游见 floating_window.lua:345-347）
-      local events = require("luxterm.events")
-      local session_manager = require("luxterm.session_manager")
-      local timers = {}
-
-      local function setup_double_esc(bufnr)
-        if not vim.api.nvim_buf_is_valid(bufnr) or timers[bufnr] then
-          return
-        end
-        if not session_manager.get_session_by_buffer(bufnr) then
-          return
-        end
-
-        local timer = vim.uv.new_timer()
-        timers[bufnr] = timer
-
-        local function on_escape()
-          if timer:is_active() then
-            timer:stop()
-            vim.cmd.stopinsert()
-          else
-            timer:start(200, 0, function() end)
-            return "<Esc>"
-          end
-        end
-
-        local esc_opts = {
-          buffer = bufnr,
-          expr = true,
-          silent = true,
-          desc = "Double escape to normal mode",
-        }
-        vim.keymap.set("t", "<Esc>", on_escape, esc_opts)
-        -- vim.keymap.set("t", "<C-[>", on_escape, esc_opts)
-      end
-
-      events.on(events.SESSION_CREATED, function(payload)
-        setup_double_esc(payload.session.bufnr)
-      end)
-
-      for _, session in ipairs(session_manager.get_all_sessions()) do
-        setup_double_esc(session.bufnr)
-      end
-    end,
   },
   {
     "sphamba/smear-cursor.nvim",

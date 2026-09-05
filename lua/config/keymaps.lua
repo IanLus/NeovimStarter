@@ -8,6 +8,11 @@ pcall(vim.keymap.del, { "n", "t" }, "<c-/>")
 local keymap = vim.keymap
 local opts = { noremap = true, silent = true }
 
+-- 与 <leader>ft 一样出现在 which-key 的 f 组
+keymap.set({ "n", "t" }, "<leader>f/", function()
+  require("luxterm.core").toggle_manager()
+end, vim.tbl_extend("force", opts, { desc = "Terminal (Luxterm)" }))
+
 -- Insert a line up/down in normal mode
 keymap.set("n", "O", "O<Esc>", opts)
 keymap.set("n", "o", "o<Esc>", opts)

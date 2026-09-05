@@ -2,8 +2,9 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
--- 关掉 LazyVim 的 Snacks 浮动终端
-pcall(vim.keymap.del, { "n", "t" }, "<c-/>")
+-- Ctrl+/ 在终端里实际是 <C-_>，两个都删掉才关得掉 Snacks 终端
+pcall(vim.keymap.del, { "n", "t" }, "<C-/>")
+pcall(vim.keymap.del, { "n", "t" }, "<C-_>")
 
 local keymap = vim.keymap
 local opts = { noremap = true, silent = true }

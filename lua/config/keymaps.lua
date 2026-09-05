@@ -1,6 +1,10 @@
 -- Keymaps are automatically loaded on the VeryLazy event
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
+
+-- 关掉 LazyVim 的 Snacks 浮动终端
+pcall(vim.keymap.del, { "n", "t" }, "<c-/>")
+
 local keymap = vim.keymap
 local opts = { noremap = true, silent = true }
 

@@ -57,7 +57,13 @@ return {
   {
     "windwp/nvim-autopairs",
     event = "InsertEnter",
-    opts = {},
+    opts = {
+      map_c_h = true,
+    },
+    config = function(_, opts)
+      require("nvim-autopairs").setup(opts)
+      require("util.autopairs_delete").setup()
+    end,
   },
   {
     "luxvim/nvim-luxterm",

@@ -54,6 +54,3 @@ keymap.set("i", "<C-b>", "<Esc><cmd>lua require('spider').motion('b')<CR>i", opt
 -- 将视觉块选择模式映射到 <C-q>
 keymap.set("n", "<C-q>", "<C-v>", opts)
 keymap.set("v", "<C-q>", "<C-v>", opts)
-
--- 将ctrl+h映射到Backspace，以实现mini.pairs的括号匹配删除
-vim.keymap.set("i", "<C-h>", "<BS>", { remap = true })

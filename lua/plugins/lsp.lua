@@ -23,6 +23,8 @@ return {
           package_uninstalled = "✗",
         },
       },
+      -- formatters / linters (stylua is already in LazyVim's mason list)
+      ensure_installed = { "oxfmt", "oxlint" },
     },
   },
   {
@@ -38,11 +40,7 @@ return {
         "jsonls",
         "lua_ls",
         "marksman",
-        "oxfmt",
-        "oxlint",
-        "stylua",
         "tailwindcss",
-        "ts_ls",
         "vtsls",
         "vue_ls",
         "bashls",
@@ -70,6 +68,16 @@ return {
         enabled = false,
       },
       servers = {
+        -- VSCode default; LazyVim enables this and expands useState(initialState)
+        -- even when `<T>(...)` is already on the line.
+        vtsls = {
+          settings = {
+            complete_function_calls = false,
+            typescript = {
+              suggest = { completeFunctionCalls = false },
+            },
+          },
+        },
         tailwindcss = {
           settings = {
             tailwindCSS = {

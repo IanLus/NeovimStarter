@@ -59,4 +59,17 @@ return {
     event = "InsertEnter",
     opts = {},
   },
+  {
+    "luxvim/nvim-luxterm",
+    pin = true,
+    opts = {
+      keymaps = {
+        toggle_manager = "<leader>f/",
+        prev_session = "<C-k>",
+        next_session = "<C-j>",
+        hide_terminal = "<C-q>",
+      },
+      session_as_buffer = false,
+    },
+  },
 }

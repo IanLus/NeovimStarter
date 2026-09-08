@@ -3,6 +3,13 @@
 ---@type LazySpec
 return {
   {
+    "L3MON4D3/LuaSnip",
+    config = function(_, opts)
+      require("luasnip").setup(opts)
+      require("util.snippets_react").setup()
+    end,
+  },
+  {
     "saghen/blink.cmp",
     ---@type blink.cmp.Config
     opts = {

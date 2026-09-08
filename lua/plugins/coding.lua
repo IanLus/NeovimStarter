@@ -13,7 +13,6 @@ return {
     "saghen/blink.cmp",
     ---@type blink.cmp.Config
     opts = {
-      -- Default floor(#kw/4) typos lets `count` match `const`; VSCode does not.
       fuzzy = { max_typos = 0 },
       completion = {
         menu = {

@@ -13,6 +13,7 @@ return {
     "saghen/blink.cmp",
     ---@type blink.cmp.Config
     opts = {
+      fuzzy = { max_typos = 0 },
       completion = {
         menu = {
           border = "rounded",
@@ -81,6 +82,11 @@ return {
           lsp = {
             transform_items = function(...)
               return require("util.blink").emmet_transform(...)
+            end,
+          },
+          snippets = {
+            transform_items = function(_, items)
+              return require("util.snippets_react").dedupe(items)
             end,
           },
         },

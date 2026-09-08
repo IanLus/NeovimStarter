@@ -104,6 +104,7 @@ function M.setup()
 
   local utils = require("blink.cmp.completion.brackets.utils")
   local orig_has = utils.has_brackets_in_front
+  ---@diagnostic disable-next-line: duplicate-set-field
   function utils.has_brackets_in_front(text_edit, bracket)
     if orig_has(text_edit, bracket) then
       return true
@@ -113,6 +114,7 @@ function M.setup()
 
   local brackets = require("blink.cmp.completion.brackets")
   local orig_add = brackets.add_brackets
+  ---@diagnostic disable-next-line: duplicate-set-field
   function brackets.add_brackets(ctx, filetype, item)
     local te = item.textEdit
     if te and already_has_args(char_after(vim.api.nvim_get_current_line(), te.range["end"].character)) then
@@ -127,6 +129,7 @@ function M.setup()
   end
 
   local orig_semantic = brackets.add_brackets_via_semantic_token
+  ---@diagnostic disable-next-line: duplicate-set-field
   function brackets.add_brackets_via_semantic_token(ctx, filetype, item)
     if already_has_args(char_after(vim.api.nvim_get_current_line(), vim.api.nvim_win_get_cursor(0)[2])) then
       return require("blink.cmp.lib.async").task.new(function(resolve)

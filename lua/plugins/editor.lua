@@ -85,7 +85,9 @@ return {
     "windwp/nvim-autopairs",
     event = "InsertEnter",
     opts = {
-      map_c_h = true,
+      -- <BS>/<C-h> 由 util.autopairs_delete 接管，避免插件 expr 映射丢掉缓冲区修改
+      map_bs = false,
+      map_c_h = false,
     },
     config = function(_, opts)
       require("nvim-autopairs").setup(opts)

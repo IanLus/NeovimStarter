@@ -183,19 +183,39 @@ local function delete_range(start_col)
   vim.api.nvim_win_set_cursor(0, { row, start_col })
 end
 
+--- <BS>/<C-w>/<C-u> at column 0: join onto the previous line when 'backspace' has eol.
+local function join_prev_line()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  if col ~= 0 or row <= 1 or not vim.o.backspace:find("eol", 1, true) then
+    return
+  end
+  local prev_len = #vim.api.nvim_buf_get_lines(0, row - 2, row - 1, true)[1]
+  vim.api.nvim_buf_set_text(0, row - 2, prev_len, row - 1, 0, { "" })
+  vim.api.nvim_win_set_cursor(0, { row - 1, prev_len })
+end
+
 function M.delete_word()
   local col = vim.api.nvim_win_get_cursor(0)[2]
+  if col == 0 then
+    join_prev_line()
+    return
+  end
   delete_range(word_start(vim.api.nvim_get_current_line(), col))
 end
 
 function M.delete_line()
+  local col = vim.api.nvim_win_get_cursor(0)[2]
+  if col == 0 then
+    join_prev_line()
+    return
+  end
   delete_range(0)
 end
 
 function M.backspace()
   local row, col = unpack(vim.api.nvim_win_get_cursor(0))
   if col == 0 then
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<BS>", true, false, true), "n", false)
+    join_prev_line()
     return
   end
 

@@ -83,6 +83,16 @@ return {
             transform_items = function(...)
               return require("util.blink").emmet_transform(...)
             end,
+            override = {
+              get_trigger_characters = function(...)
+                return require("util.blink").lsp_trigger_characters(...)
+              end,
+            },
+          },
+          buffer = {
+            should_show_items = function(...)
+              return require("util.blink").buffer_should_show(...)
+            end,
           },
           snippets = {
             transform_items = function(_, items)
@@ -104,13 +114,10 @@ return {
         group = vim.api.nvim_create_augroup("blink_cmp_transparent", { clear = true }),
         callback = clear_cmp_bg,
       })
-      vim.api.nvim_create_autocmd("InsertEnter", {
-        group = vim.api.nvim_create_augroup("user_blink_setup", { clear = true }),
-        once = true,
-        callback = function()
-          require("util.blink").setup()
-        end,
-      })
+      -- Plugin loads on InsertEnter, so a once-autocmd registered here misses this first enter.
+      vim.schedule(function()
+        require("util.blink").setup()
+      end)
     end,
   },
 }

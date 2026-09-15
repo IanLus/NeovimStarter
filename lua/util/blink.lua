@@ -96,7 +96,89 @@ function M.emmet_transform(ctx, items)
   return filtered
 end
 
+--- Ensure `<` is a TS/JS trigger so `foo<` is not treated as a buffer-word query.
+function M.lsp_trigger_characters(module)
+  M.setup()
+  local chars = module:get_trigger_characters()
+  local ft = vim.bo.filetype
+  if (ft:find("typescript", 1, true) or ft:find("javascript", 1, true)) and not vim.tbl_contains(chars, "<") then
+    chars[#chars + 1] = "<"
+  end
+  return chars
+end
+
+--- After `<` / `.` the keyword is empty; buffer would dump every word as Text.
+function M.buffer_should_show(ctx)
+  return not (ctx.trigger.initial_kind == "trigger_character" and ctx.bounds.length == 0)
+end
+
+local ts_lsp = {
+  vtsls = true,
+  ts_ls = true,
+  tsserver = true,
+  ["typescript-tools"] = true,
+}
+
+local function copy_ctx(context, trigger_kind)
+  local ctx = vim.tbl_extend("force", {}, context)
+  ctx.trigger = vim.tbl_extend("force", context.trigger, { kind = trigger_kind, character = nil })
+  return ctx
+end
+
+--- Blink merges every client's trigger chars. Tailwind's `(` must not be sent to vtsls as TriggerCharacter.
+local function with_client_trigger(context, client)
+  local ch = context.trigger.character
+  if context.trigger.kind ~= "trigger_character" or not ch then
+    return context
+  end
+  local chars = vim.tbl_get(client, "server_capabilities", "completionProvider", "triggerCharacters") or {}
+  if vim.tbl_contains(chars, ch) then
+    return context
+  end
+  return copy_ctx(context, "keyword")
+end
+
+local function patch_lsp_completion()
+  if M._lsp_done then
+    return
+  end
+  M._lsp_done = true
+
+  local cache = require("blink.cmp.sources.lsp.cache")
+  local orig_set = cache.set
+  ---@diagnostic disable-next-line: duplicate-set-field
+  function cache.set(context, client, response)
+    -- vtsls often returns [] for the first `<`; do not freeze that into the cache.
+    if context.trigger.kind == "trigger_character" and (not response or not response.items or #response.items == 0) then
+      return
+    end
+    return orig_set(context, client, response)
+  end
+
+  local completion = require("blink.cmp.sources.lsp.completion")
+  local orig_get = completion.get_completion_for_client
+  ---@diagnostic disable-next-line: duplicate-set-field
+  function completion.get_completion_for_client(context, client, opts)
+    local ctx = with_client_trigger(context, client)
+    local task = orig_get(ctx, client, opts)
+    -- Same request as <C-Space>: TriggerCharacter `<` is empty, Invoked returns type args.
+    if not ts_lsp[client.name] or ctx.trigger.character ~= "<" or ctx._generic_retried then
+      return task
+    end
+    return task:map(function(response)
+      if response and response.items and #response.items > 0 then
+        return response
+      end
+      local retry = copy_ctx(ctx, "manual")
+      retry._generic_retried = true
+      return orig_get(retry, client, opts)
+    end)
+  end
+end
+
 function M.setup()
+  patch_lsp_completion()
+
   if M._done then
     return
   end

@@ -68,8 +68,8 @@ return {
         enabled = false,
       },
       servers = {
-        -- VSCode default; LazyVim enables this and expands useState(initialState)
-        -- even when `<T>(...)` is already on the line.
+        -- VS Code 默认 completeFunctionCalls = false；LazyVim 会把它打开。
+        -- javascript 由 LazyVim 从 typescript 拷一份，不必再写一遍。
         vtsls = {
           settings = {
             complete_function_calls = false,

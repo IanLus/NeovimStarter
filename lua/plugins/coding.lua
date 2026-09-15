@@ -15,6 +15,10 @@ return {
     opts = {
       fuzzy = { max_typos = 0 },
       completion = {
+        accept = {
+          -- 默认不在函数名后插 `()`；LazyVim 默认开了 blink auto_brackets
+          auto_brackets = { enabled = false },
+        },
         menu = {
           border = "rounded",
           draw = {

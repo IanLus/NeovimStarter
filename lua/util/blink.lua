@@ -149,7 +149,11 @@ local function patch_lsp_completion()
   ---@diagnostic disable-next-line: duplicate-set-field
   function cache.set(context, client, response)
     -- vtsls often returns [] for the first `<`; do not freeze that into the cache.
-    if context.trigger.kind == "trigger_character" and (not response or not response.items or #response.items == 0) then
+    if
+      context.trigger
+      and context.trigger.kind == "trigger_character"
+      and (not response or not response.items or #response.items == 0)
+    then
       return
     end
     return orig_set(context, client, response)

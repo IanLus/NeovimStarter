@@ -107,8 +107,20 @@ function M.lsp_trigger_characters(module)
   return chars
 end
 
---- After `<` / `.` the keyword is empty; buffer would dump every word as Text.
+--- `<Foo` / `foo<T` : VS Code only shows LSP here. Buffer would dump every word as Text.
+local function after_angle(ctx)
+  local tr = ctx.trigger or {}
+  if tr.initial_character == "<" or tr.character == "<" then
+    return true
+  end
+  local col = ctx.cursor and ctx.cursor[2] or 0
+  return (ctx.line or ""):sub(1, col):match("<%s*[%w_]*$") ~= nil
+end
+
 function M.buffer_should_show(ctx)
+  if after_angle(ctx) then
+    return false
+  end
   return not (ctx.trigger.initial_kind == "trigger_character" and ctx.bounds.length == 0)
 end
 
@@ -138,6 +150,17 @@ local function with_client_trigger(context, client)
   return copy_ctx(context, "keyword")
 end
 
+local function empty_response(response)
+  return not response or not response.items or #response.items == 0
+end
+
+local function mark_incomplete_if_empty(response)
+  if not empty_response(response) then
+    return response
+  end
+  return { items = {}, is_incomplete_forward = true, is_incomplete_backward = true }
+end
+
 local function patch_lsp_completion()
   if M._lsp_done then
     return
@@ -148,12 +171,9 @@ local function patch_lsp_completion()
   local orig_set = cache.set
   ---@diagnostic disable-next-line: duplicate-set-field
   function cache.set(context, client, response)
-    -- vtsls often returns [] for the first `<`; do not freeze that into the cache.
-    if
-      context.trigger
-      and context.trigger.kind == "trigger_character"
-      and (not response or not response.items or #response.items == 0)
-    then
+    -- `[ <` is parsed as comparison and comes back []. Caching that blocks `<S`,
+    -- which tsserver treats as JSX (VS Code re-queries). Same for other `<` triggers.
+    if empty_response(response) and after_angle(context) then
       return
     end
     return orig_set(context, client, response)
@@ -165,18 +185,24 @@ local function patch_lsp_completion()
   function completion.get_completion_for_client(context, client, opts)
     local ctx = with_client_trigger(context, client)
     local task = orig_get(ctx, client, opts)
-    -- Same request as <C-Space>: TriggerCharacter `<` is empty, Invoked returns type args.
-    if not ts_lsp[client.name] or ctx.trigger.character ~= "<" or ctx._generic_retried then
+    if not ts_lsp[client.name] then
       return task
     end
-    return task:map(function(response)
-      if response and response.items and #response.items > 0 then
-        return response
-      end
-      local retry = copy_ctx(ctx, "manual")
-      retry._generic_retried = true
-      return orig_get(retry, client, opts)
-    end)
+    -- Bare `<` is often empty (array JSX / generics). Invoked matches <C-Space>.
+    if ctx.trigger.character == "<" and not ctx._angle_retried then
+      task = task:map(function(response)
+        if not empty_response(response) then
+          return response
+        end
+        local retry = copy_ctx(ctx, "manual")
+        retry._angle_retried = true
+        return orig_get(retry, client, opts)
+      end)
+    end
+    if after_angle(ctx) then
+      return task:map(mark_incomplete_if_empty)
+    end
+    return task
   end
 end
 

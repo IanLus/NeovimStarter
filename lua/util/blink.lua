@@ -137,7 +137,37 @@ local function copy_ctx(context, trigger_kind)
   return ctx
 end
 
---- Blink merges every client's trigger chars. Tailwind's `(` must not be sent to vtsls as TriggerCharacter.
+-- VS Code 只在单词或 TS 触发符（. " ' ` / @ < #）上自动补全；`(`, `{`, `[` 只开签名。
+local pair_openers = { ["("] = true, ["{"] = true, ["["] = true }
+local ts_triggers = {
+  ["."] = true,
+  ['"'] = true,
+  ["'"] = true,
+  ["`"] = true,
+  ["/"] = true,
+  ["@"] = true,
+  ["<"] = true,
+  ["#"] = true,
+}
+
+local function char_before_cursor()
+  local col = vim.api.nvim_win_get_cursor(0)[2]
+  return vim.api.nvim_get_current_line():sub(col, col)
+end
+
+local function should_auto_show()
+  local prev = char_before_cursor()
+  return ts_triggers[prev] or prev:match("[%w_]") ~= nil
+end
+
+function M.hide_if_after_opener()
+  if pair_openers[char_before_cursor()] then
+    require("blink.cmp.completion.trigger").hide()
+  end
+end
+
+--- Blink 合并各 client 触发符；tailwind 的 `(` 不能当 vtsls 的 TriggerCharacter。
+---@return blink.cmp.Context|nil
 local function with_client_trigger(context, client)
   local ch = context.trigger.character
   if context.trigger.kind ~= "trigger_character" or not ch then
@@ -146,6 +176,9 @@ local function with_client_trigger(context, client)
   local chars = vim.tbl_get(client, "server_capabilities", "completionProvider", "triggerCharacters") or {}
   if vim.tbl_contains(chars, ch) then
     return context
+  end
+  if pair_openers[ch] then
+    return nil
   end
   return copy_ctx(context, "keyword")
 end
@@ -184,6 +217,11 @@ local function patch_lsp_completion()
   ---@diagnostic disable-next-line: duplicate-set-field
   function completion.get_completion_for_client(context, client, opts)
     local ctx = with_client_trigger(context, client)
+    if not ctx then
+      return require("blink.cmp.lib.async").task.new(function(resolve)
+        resolve(mark_incomplete_if_empty(nil))
+      end)
+    end
     local task = orig_get(ctx, client, opts)
     if not ts_lsp[client.name] then
       return task
@@ -206,8 +244,66 @@ local function patch_lsp_completion()
   end
 end
 
+local function patch_pair_openers()
+  if M._pair_done then
+    return
+  end
+  M._pair_done = true
+
+  local trigger = require("blink.cmp.completion.trigger")
+  local orig_is = trigger.is_trigger_character
+  ---@diagnostic disable-next-line: duplicate-set-field
+  function trigger.is_trigger_character(char, is_show_on_x)
+    if pair_openers[char] then
+      return false
+    end
+    return orig_is(char, is_show_on_x)
+  end
+
+  local orig_show = trigger.show
+  ---@diagnostic disable-next-line: duplicate-set-field
+  function trigger.show(opts)
+    opts = opts or {}
+    if opts.trigger_kind == "manual" then
+      return orig_show(opts)
+    end
+    if pair_openers[opts.trigger_character] or not should_auto_show() then
+      return trigger.hide()
+    end
+    return orig_show(opts)
+  end
+
+  -- InsertCharPre 先关已打开的菜单；schedule 再扫一遍，避开 autopairs 吃掉 CursorMoved。
+  local group = vim.api.nvim_create_augroup("blink_vscode_signature", { clear = true })
+  vim.api.nvim_create_autocmd("InsertCharPre", {
+    group = group,
+    callback = function()
+      if pair_openers[vim.v.char] or vim.v.char == "," then
+        trigger.hide()
+      end
+    end,
+  })
+  vim.api.nvim_create_autocmd({ "TextChangedI", "CursorMovedI" }, {
+    group = group,
+    callback = function()
+      vim.schedule(function()
+        if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "i" then
+          return
+        end
+        if not trigger.context or trigger.context.trigger.initial_kind == "manual" then
+          return
+        end
+        if not should_auto_show() then
+          trigger.hide()
+        end
+      end)
+    end,
+  })
+end
+
 function M.setup()
   patch_lsp_completion()
+  patch_pair_openers()
 
   if M._done then
     return

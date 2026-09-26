@@ -19,6 +19,10 @@ return {
           -- 默认不在函数名后插 `()`；LazyVim 默认开了 blink auto_brackets
           auto_brackets = { enabled = false },
         },
+        trigger = {
+          -- `(`, `{`, `[` 不是 TS 补全触发符，挡住以免盖住签名 / 抢走回车
+          show_on_blocked_trigger_characters = { " ", "\n", "\t", "(", "{", "[" },
+        },
         menu = {
           border = "rounded",
           draw = {
@@ -48,6 +52,13 @@ return {
       -- merged with LazyVim: { preset = "enter", ["<C-y>"] = ... }
       keymap = {
         ["<A-i>"] = { "show", "show_documentation", "hide_documentation" },
+        ["<CR>"] = {
+          function()
+            require("util.blink").hide_if_after_opener()
+          end,
+          "accept",
+          "fallback",
+        },
         ["<Tab>"] = {
           function(cmp)
             if not cmp.is_visible() then

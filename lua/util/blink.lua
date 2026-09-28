@@ -160,6 +160,43 @@ local function should_auto_show()
   return ts_triggers[prev] or prev:match("[%w_]") ~= nil
 end
 
+--- 已输入文本与当前每一项相同（忽略大小写）。Ctrl+N 选中或自动插入时不关。
+local function typed_exact_items(trigger)
+  local list = package.loaded["blink.cmp.completion.list"]
+  if not list or list.is_explicitly_selected or list.preview_undo or not list.items or #list.items == 0 then
+    return false
+  end
+  local keyword = trigger.context:get_keyword():lower()
+  if keyword == "" then
+    return false
+  end
+  for _, item in ipairs(list.items) do
+    if identifier_only(tostring(item.insertText or item.label or "")):lower() ~= keyword then
+      return false
+    end
+  end
+  return true
+end
+
+local function dismiss_lingering(trigger)
+  if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "i" then
+    return
+  end
+  if trigger.context and trigger.context.trigger.initial_kind == "manual" then
+    return
+  end
+  if not trigger.context then
+    local menu = require("blink.cmp.completion.windows.menu")
+    if menu.win:is_open() then
+      menu.close()
+    end
+    return
+  end
+  if not should_auto_show() or typed_exact_items(trigger) then
+    trigger.hide()
+  end
+end
+
 function M.hide_if_after_opener()
   if pair_openers[char_before_cursor()] then
     require("blink.cmp.completion.trigger").hide()
@@ -273,29 +310,13 @@ local function patch_pair_openers()
     return orig_show(opts)
   end
 
-  -- InsertCharPre 先关已打开的菜单；schedule 再扫一遍，避开 autopairs 吃掉 CursorMoved。
+  -- 延后到字符落地再关窗口，InsertCharPre 里关会 E565。
   local group = vim.api.nvim_create_augroup("blink_vscode_signature", { clear = true })
-  vim.api.nvim_create_autocmd("InsertCharPre", {
-    group = group,
-    callback = function()
-      if pair_openers[vim.v.char] or vim.v.char == "," then
-        trigger.hide()
-      end
-    end,
-  })
   vim.api.nvim_create_autocmd({ "TextChangedI", "CursorMovedI" }, {
     group = group,
     callback = function()
       vim.schedule(function()
-        if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "i" then
-          return
-        end
-        if not trigger.context or trigger.context.trigger.initial_kind == "manual" then
-          return
-        end
-        if not should_auto_show() then
-          trigger.hide()
-        end
+        dismiss_lingering(trigger)
       end)
     end,
   })

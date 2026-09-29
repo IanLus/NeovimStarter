@@ -178,6 +178,35 @@ local function typed_exact_items(trigger)
   return true
 end
 
+local function ghost_text()
+  return package.loaded["blink.cmp.completion.windows.ghost_text"]
+end
+
+--- context 已被置空时 hide() 不会清幽灵文本，需要直接关掉列表和 extmark。
+local function force_dismiss(trigger)
+  local list = package.loaded["blink.cmp.completion.list"]
+  local menu = package.loaded["blink.cmp.completion.windows.menu"]
+  local ghost = ghost_text()
+  local pending = trigger.context
+    or (menu and menu.win:is_open())
+    or (ghost and ghost.is_open())
+    or (list and list.items and #list.items > 0)
+  if not pending then
+    return
+  end
+  list = require("blink.cmp.completion.list")
+  list.undo_preview()
+  if trigger.context then
+    trigger.hide()
+  else
+    list.hide()
+  end
+  ghost = ghost_text()
+  if ghost and ghost.is_open() then
+    ghost.clear_preview()
+  end
+end
+
 local function dismiss_lingering(trigger)
   if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "i" then
     return
@@ -185,21 +214,14 @@ local function dismiss_lingering(trigger)
   if trigger.context and trigger.context.trigger.initial_kind == "manual" then
     return
   end
-  if not trigger.context then
-    local menu = require("blink.cmp.completion.windows.menu")
-    if menu.win:is_open() then
-      menu.close()
-    end
-    return
-  end
-  if not should_auto_show() or typed_exact_items(trigger) then
-    trigger.hide()
+  if not trigger.context or not should_auto_show() or typed_exact_items(trigger) then
+    force_dismiss(trigger)
   end
 end
 
 function M.hide_if_after_opener()
   if pair_openers[char_before_cursor()] then
-    require("blink.cmp.completion.trigger").hide()
+    force_dismiss(require("blink.cmp.completion.trigger"))
   end
 end
 
@@ -305,7 +327,8 @@ local function patch_pair_openers()
       return orig_show(opts)
     end
     if pair_openers[opts.trigger_character] or not should_auto_show() then
-      return trigger.hide()
+      force_dismiss(trigger)
+      return
     end
     return orig_show(opts)
   end

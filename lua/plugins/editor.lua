@@ -69,6 +69,7 @@ return {
   },
   {
     "IanLus/nvim-luxterm",
+    branch = "feat/config_session_buffer",
     opts = {
       keymaps = {
         toggle_manager = "<leader>f/",

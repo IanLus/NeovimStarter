@@ -68,8 +68,7 @@ return {
     end,
   },
   {
-    "luxvim/nvim-luxterm",
-    pin = true,
+    "IanLus/nvim-luxterm",
     opts = {
       keymaps = {
         toggle_manager = "<leader>f/",

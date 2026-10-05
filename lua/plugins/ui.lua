@@ -167,7 +167,7 @@ return {
           {
             section = "terminal",
             -- cmd = "chafa ~/.config/pic/t1.png --format symbols --symbols vhalf --size 60x20 --stretch; sleep .1",
-            cmd = "chafa ~/.config/pic/rain.jpg --size 60x20 --stretch; sleep .1",
+            cmd = "chafa ~/Pictures/rain.jpg --size 60x20 --stretch; sleep .1",
             -- cmd = "viu ~/.config/pic/rain.jpg -w 60 -h 20; sleep .1",
             height = 20,
             padding = 1,

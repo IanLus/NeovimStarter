@@ -326,6 +326,11 @@ local function patch_pair_openers()
     if opts.trigger_kind == "manual" then
       return orig_show(opts)
     end
+    -- should_auto_show() 读的是 buffer 光标。命令行里经常为假
+    local mode = vim.api.nvim_get_mode().mode
+    if mode == "c" or vim.fn.win_gettype() == "command" then
+      return orig_show(opts)
+    end
     if pair_openers[opts.trigger_character] or not should_auto_show() then
       force_dismiss(trigger)
       return

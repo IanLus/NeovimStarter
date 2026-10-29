@@ -19,6 +19,17 @@ return {
     cmd = "NeoTree",
     keys = {
       { "<leader>e", "<cmd>Neotree toggle<CR>", desc = "Toggle Neo-tree" },
+      {
+        "<leader>E",
+        function()
+          if vim.bo.filetype == "neo-tree" then
+            vim.cmd.wincmd("p")
+          else
+            vim.cmd("Neotree focus")
+          end
+        end,
+        desc = "Focus Neo-tree",
+      },
     },
     ---@type neotree.Config
     opts = {
@@ -191,6 +202,10 @@ return {
   {
     "folke/snacks.nvim",
     priority = 1000,
+    keys = {
+      -- snacks_explorer 把 <leader>E 重映射到 <leader>fE，这里卸掉
+      { "<leader>E", false },
+    },
     ---@type snacks.Config
     opts = {
       image = { enabled = true },

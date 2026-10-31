@@ -53,6 +53,7 @@ function M.emmet_transform(ctx, items)
   if vim.in_fast_event() then
     return items
   end
+  items = M.fix_jsdoc_kind(items)
   local ok_ft, ft = pcall(function()
     return vim.bo[ctx.bufnr].filetype
   end)
@@ -94,6 +95,17 @@ function M.emmet_transform(ctx, items)
     end
   end
   return filtered
+end
+
+--- vtsls 的 JSDoc 项 kind 是 Text=0。0 在转换里被丢掉，blink 空 kind 默认画成 Property。
+function M.fix_jsdoc_kind(items)
+  local Text = require("blink.cmp.types").CompletionItemKind.Text
+  for _, item in ipairs(items) do
+    if item.label == "/** */" then
+      item.kind = Text
+    end
+  end
+  return items
 end
 
 --- Ensure `<` is a TS/JS trigger so `foo<` is not treated as a buffer-word query.
@@ -207,11 +219,21 @@ local function force_dismiss(trigger)
   end
 end
 
+local function previewing()
+  local list = package.loaded["blink.cmp.completion.list"]
+  return list ~= nil and list.preview_undo ~= nil
+end
+
 local function dismiss_lingering(trigger)
   if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "i" then
     return
   end
   if trigger.context and trigger.context.trigger.initial_kind == "manual" then
+    return
+  end
+  -- 选中项的预览（例如 JSDoc 的 /** */）会把光标移出单词。
+  -- 这时关掉菜单，下一项就切不过去。
+  if previewing() then
     return
   end
   if not trigger.context or not should_auto_show() or typed_exact_items(trigger) then
@@ -331,6 +353,9 @@ local function patch_pair_openers()
     if mode == "c" or vim.fn.win_gettype() == "command" then
       return orig_show(opts)
     end
+    if previewing() then
+      return orig_show(opts)
+    end
     if pair_openers[opts.trigger_character] or not should_auto_show() then
       force_dismiss(trigger)
       return
@@ -348,6 +373,65 @@ local function patch_pair_openers()
       end)
     end,
   })
+end
+
+local function item_filter_text(item)
+  local text = item.filterText
+  if type(text) ~= "string" or text == "" then
+    text = item.label or ""
+  end
+  return text:match('^"(.*)"$') or text:match("^'(.*)'$") or text
+end
+
+local function typed_keyword()
+  local ok, keyword = pcall(function()
+    return require("blink.cmp.completion.trigger.context").get_keyword()
+  end)
+  if not ok or type(keyword) ~= "string" then
+    return ""
+  end
+  return keyword
+end
+
+--- LSP CompletionItemTag.Deprecated
+local function is_deprecated(item)
+  if item.deprecated then
+    return true
+  end
+  if type(item.tags) ~= "table" then
+    return false
+  end
+  for _, tag in ipairs(item.tags) do
+    if tag == 1 then
+      return true
+    end
+  end
+  return false
+end
+
+--- 已弃用的项沉底。VS Code 不让 deprecated 靠分数挤到前面。
+function M.sort_deprecated_last(a, b)
+  local ad, bd = is_deprecated(a), is_deprecated(b)
+  if ad ~= bd then
+    return not ad
+  end
+end
+
+--- 整词命中（忽略大小写）先于只命中前缀的项。
+--- blink 的 exact 区分大小写，"ge" 对不上 "GE"，snippet "get" 会靠大小写加分排到字面量前面。
+function M.sort_whole_word_first(a, b)
+  local keyword = typed_keyword()
+  if keyword == "" then
+    return
+  end
+  local kw = keyword:lower()
+  local function whole(item)
+    return item_filter_text(item):lower() == kw
+  end
+  local aw, bw = whole(a), whole(b)
+  if aw ~= bw then
+    return aw
+  end
 end
 
 function M.setup()

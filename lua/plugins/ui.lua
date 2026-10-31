@@ -62,6 +62,15 @@ return {
         opts = { skip = true },
       })
       opts.presets.lsp_doc_border = true
+      opts.views = opts.views or {}
+      opts.views.hover = opts.views.hover or {}
+      opts.views.hover.buf_options = vim.tbl_deep_extend("force", opts.views.hover.buf_options or {}, {
+        filetype = "markdown",
+      })
+      opts.views.hover.win_options = vim.tbl_deep_extend("force", opts.views.hover.win_options or {}, {
+        wrap = false,
+        linebreak = false,
+      })
     end,
   },
 
@@ -179,14 +188,10 @@ return {
       },
       dashboard = {
         sections = {
-          {
-            section = "terminal",
-            -- cmd = "chafa ~/.config/pic/t1.png --format symbols --symbols vhalf --size 60x20 --stretch; sleep .1",
-            cmd = "chafa ~/Pictures/rain.jpg --size 60x20 --stretch; sleep .1",
-            -- cmd = "viu ~/.config/pic/rain.jpg -w 60 -h 20; sleep .1",
-            height = 20,
-            padding = 1,
-          },
+          function()
+            -- 不用 chafa 字符画。jpg 经 ffmpeg 转成 png，再由 Kitty 图形协议显示。
+            return require("util.snacks_image").dashboard_image("~/Pictures/rain.jpg", 20, 60)
+          end,
           {
             pane = 2,
             { section = "keys", gap = 1, padding = 1 },

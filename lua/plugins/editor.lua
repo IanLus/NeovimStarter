@@ -68,6 +68,25 @@ return {
     end,
   },
   {
+    "ibhagwan/fzf-lua",
+    opts = {
+      previewers = {
+        builtin = {
+          -- 关掉 LazyVim 的 chafa --format=symbols。字符图在 kitty 里就是像素块。
+          -- 预览改走 Snacks，直接用 Kitty 图形协议。
+          extensions = {
+            ["png"] = false,
+            ["jpg"] = false,
+            ["jpeg"] = false,
+            ["gif"] = false,
+            ["webp"] = false,
+          },
+          snacks_image = { enabled = true },
+        },
+      },
+    },
+  },
+  {
     "IanLus/nvim-luxterm",
     branch = "feat/config_session_buffer",
     opts = {

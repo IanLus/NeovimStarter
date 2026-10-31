@@ -3,6 +3,8 @@
 -- Add any additional autocmds here
 --
 -- 直接打开文件时本文件会在 Snacks 就绪前加载，所以这里不用 Snacks.toggle。
+-- 本文件在 VeryLazy 加载，此时 Snacks 已经 setup。
+require("util.snacks_image").setup()
 
 -- LazyVim wrap_spell 会给 markdown 开 spell。本文件在它之后加载，只关拼写，保留 wrap。
 -- <leader>ud 默认切全局诊断；markdown 里改成只切当前 buffer。
@@ -28,5 +30,20 @@ vim.api.nvim_create_autocmd("FileType", {
       buffer = ev.buf,
       desc = "Toggle Diagnostics",
     })
+  end,
+})
+
+-- hover 已是 markdown。wrap 关闭后窗口只有文本那么高，按图片高度把内容和边框一起加高。
+vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
+  group = vim.api.nvim_create_augroup("user_hover_image", { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].filetype ~= "markdown" then
+      return
+    end
+    local hover = require("util.hover_image")
+    hover.prepare(ev.buf)
+    vim.schedule(function()
+      hover.grow(ev.buf)
+    end)
   end,
 })

@@ -434,6 +434,197 @@ function M.sort_whole_word_first(a, b)
   end
 end
 
+-- 只拦 Snacks 能显示的位图。svg 是文本，继续走原来的源码预览。
+local image_exts = {
+  png = true,
+  jpg = true,
+  jpeg = true,
+  gif = true,
+  webp = true,
+  bmp = true,
+  tiff = true,
+}
+
+local px_cache = {}
+
+local function is_image_path(path)
+  local ext = vim.fn.fnamemodify(path, ":e"):lower()
+  return image_exts[ext] == true and vim.fn.filereadable(path) == 1
+end
+
+--- 把像素尺寸收进文档窗的最大宽高，保持比例。
+local function fit_cells(px_w, px_h, max_w, max_h)
+  local term = require("snacks.image.terminal").size()
+  local cw = math.max(term.cell_width or 10, 1)
+  local ch = math.max(term.cell_height or 20, 1)
+  local cols = math.max(1, math.ceil(px_w / cw))
+  local rows = math.max(1, math.ceil(px_h / ch))
+  if cols > max_w or rows > max_h then
+    local scale = math.min(max_w / cols, max_h / rows)
+    cols = math.max(1, math.floor(cols * scale + 0.5))
+    rows = math.max(1, math.floor(rows * scale + 0.5))
+  end
+  return cols, rows
+end
+
+---@param path string
+---@param cb fun(w?: integer, h?: integer)
+local function read_pixels(path, cb)
+  local cached = px_cache[path]
+  if cached then
+    cb(cached[1], cached[2])
+    return
+  end
+  local ext = vim.fn.fnamemodify(path, ":e"):lower()
+  if ext == "png" then
+    local ok, dim = pcall(require("snacks.image.util").dim, path)
+    if ok and dim and dim.width and dim.height then
+      px_cache[path] = { dim.width, dim.height }
+      cb(dim.width, dim.height)
+      return
+    end
+  end
+  if vim.fn.executable("ffprobe") ~= 1 then
+    cb()
+    return
+  end
+  vim.system({
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=width,height",
+    "-of",
+    "csv=p=0:s=x",
+    path,
+  }, { text = true }, function(obj)
+    vim.schedule(function()
+      local w, h = (obj.stdout or ""):match("(%d+)x(%d+)")
+      w, h = tonumber(w), tonumber(h)
+      if obj.code == 0 and w and h then
+        px_cache[path] = { w, h }
+        cb(w, h)
+      else
+        cb()
+      end
+    end)
+  end)
+end
+
+---@param opts blink.cmp.CompletionDocumentationDrawOpts
+---@param path string
+---@param px_w? integer
+---@param px_h? integer
+local function draw_image_docs(opts, path, px_w, px_h)
+  local buf = opts.window:get_buf()
+  if not vim.api.nvim_buf_is_valid(buf) then
+    return
+  end
+  local max_w = opts.config.window.max_width or 80
+  local max_h = opts.config.window.max_height or 20
+  local cols, rows
+  if px_w and px_h and px_w > 0 and px_h > 0 then
+    cols, rows = fit_cells(px_w, px_h, max_w, max_h)
+  else
+    cols, rows = math.min(48, max_w), math.min(14, max_h)
+  end
+  local line = string.rep(" ", cols)
+  local lines = {}
+  for _ = 1, rows do
+    lines[#lines + 1] = line
+  end
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  local token = vim.b[buf].path_image_token
+  vim.schedule(function()
+    if not vim.api.nvim_buf_is_valid(buf) or vim.b[buf].path_image_token ~= token then
+      return
+    end
+    local win = opts.window:get_win()
+    if win and vim.api.nvim_win_is_valid(win) then
+      vim.wo[win].wrap = false
+    end
+    pcall(function()
+      require("snacks.image").buf.attach(buf, {
+        src = path,
+        width = cols,
+        height = rows,
+        max_width = cols,
+        max_height = rows,
+      })
+    end)
+  end)
+end
+
+--- 路径补全：文本仍走原来的内容预览，图片改在同一个文档窗里显示。
+---@param self table
+---@param item blink.cmp.CompletionItem
+---@param callback fun(item: blink.cmp.CompletionItem)
+function M.path_resolve(self, item, callback)
+  local full = item.data and item.data.full_path
+  if type(full) ~= "string" or not is_image_path(full) then
+    return self:resolve(item, callback)
+  end
+  read_pixels(full, function(w, h)
+    item.documentation = {
+      kind = "markdown",
+      value = " ",
+      ---@diagnostic disable-next-line: inject-field
+      image = { path = full, w = w, h = h },
+    }
+    callback(item)
+  end)
+end
+
+local function set_wrap(opts, wrap)
+  opts.window.config.wrap = wrap
+  local win = opts.window:get_win()
+  if win and vim.api.nvim_win_is_valid(win) then
+    vim.wo[win].wrap = wrap
+  end
+end
+
+--- 文档窗绘制。上一张图的 placement 要先清掉，否则切到文本文件时图还留着。
+---@param opts blink.cmp.CompletionDocumentationDrawOpts
+function M.draw_docs(opts)
+  local buf = opts.window and opts.window:get_buf()
+  local image = opts.item and type(opts.item.documentation) == "table" and opts.item.documentation.image or nil
+  if type(image) == "table" and type(image.path) == "string" then
+    local selected
+    local ok_list, list = pcall(require, "blink.cmp.completion.list")
+    if ok_list then
+      selected = list.get_selected_item()
+    end
+    local selected_path = selected and selected.data and selected.data.full_path
+    -- ffprobe 回来时选中项可能已经换成别的文件，不要盖掉当前预览。
+    if selected and selected_path ~= image.path then
+      return
+    end
+  end
+  if buf and vim.api.nvim_buf_is_valid(buf) then
+    -- 让还没画上的上一张图作废。文档窗是复用的。
+    vim.b[buf].path_image_token = (vim.b[buf].path_image_token or 0) + 1
+  end
+  local placement = package.loaded["snacks.image.placement"]
+  if buf and placement then
+    pcall(placement.clean, buf)
+  end
+  if type(image) == "table" and type(image.path) == "string" then
+    -- 空格行用来撑开窗口。wrap 开着时，行宽等于窗口宽会被折成两行。
+    set_wrap(opts, false)
+    draw_image_docs(opts, image.path, image.w, image.h)
+    return
+  end
+  if buf and vim.bo[buf].filetype == "image" then
+    vim.bo[buf].filetype = "blink-cmp-documentation"
+  end
+  set_wrap(opts, true)
+  opts.default_implementation()
+end
+
 function M.setup()
   patch_lsp_completion()
   patch_pair_openers()

@@ -61,7 +61,13 @@ return {
             },
           },
         },
-        documentation = { window = { border = "rounded" } },
+        documentation = {
+          window = { border = "rounded" },
+          -- 路径项里的图片在这个窗口预览；文本文件仍用默认的内容高亮。
+          draw = function(opts)
+            require("util.blink").draw_docs(opts)
+          end,
+        },
       },
       -- merged with LazyVim: { preset = "enter", ["<C-y>"] = ... }
       keymap = {
@@ -127,6 +133,13 @@ return {
             transform_items = function(_, items)
               return require("util.snippets_react").dedupe(items)
             end,
+          },
+          path = {
+            override = {
+              resolve = function(...)
+                return require("util.blink").path_resolve(...)
+              end,
+            },
           },
         },
       },

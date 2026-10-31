@@ -13,7 +13,21 @@ return {
     "saghen/blink.cmp",
     ---@type blink.cmp.Config
     opts = {
-      fuzzy = { max_typos = 0 },
+      fuzzy = {
+        max_typos = 0,
+        -- VS Code：弃用项沉底；整词命中先于前缀；分数；再靠 LSP sortText 打破平局。
+        -- 不按 kind 排，也不把 snippet 一律垫底（snippetSuggestions 默认是 inline）。
+        sorts = {
+          function(a, b)
+            return require("util.blink").sort_deprecated_last(a, b)
+          end,
+          function(a, b)
+            return require("util.blink").sort_whole_word_first(a, b)
+          end,
+          "score",
+          "sort_text",
+        },
+      },
       completion = {
         accept = {
           -- 默认不在函数名后插 `()`；LazyVim 默认开了 blink auto_brackets

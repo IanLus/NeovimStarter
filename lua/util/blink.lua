@@ -434,7 +434,6 @@ function M.sort_whole_word_first(a, b)
   end
 end
 
--- 只拦 Snacks 能显示的位图。svg 是文本，继续走原来的源码预览。
 local image_exts = {
   png = true,
   jpg = true,
@@ -443,6 +442,7 @@ local image_exts = {
   webp = true,
   bmp = true,
   tiff = true,
+  svg = true,
 }
 
 local px_cache = {}
@@ -482,6 +482,20 @@ local function read_pixels(path, cb)
       px_cache[path] = { dim.width, dim.height }
       cb(dim.width, dim.height)
       return
+    end
+  end
+  if ext == "svg" then
+    local fd = io.open(path, "r")
+    if fd then
+      local head = fd:read(800) or ""
+      fd:close()
+      local w = tonumber(head:match('width="([%d%.]+)'))
+      local h = tonumber(head:match('height="([%d%.]+)'))
+      if w and h and w > 0 and h > 0 and w <= 4096 and h <= 4096 then
+        px_cache[path] = { w, h }
+        cb(w, h)
+        return
+      end
     end
   end
   if vim.fn.executable("ffprobe") ~= 1 then

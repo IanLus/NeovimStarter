@@ -140,11 +140,30 @@ local function patch_data_uri()
   doc_patched = true
 
   -- https://github.com/folke/snacks.nvim/issues/2668
-  -- data:image/svg+xml 对不上 %w+/%w+，ext 也被收成 png。
+  -- ^data:%w+/%w+;base64, 和 ^image/(%w+)$ 都吃不下 svg+xml 里的 +。
+  -- 于是 data URI 不会走进 data_img，扩展名还会落成 png。
   -- https://github.com/folke/snacks.nvim/issues/2669
   -- content_id 只用 base64 前 20 个字符，不同 svg 会撞成同一张图。
+  local strict_data = "^data:%w+/%w+;base64,"
+  local wide_data = "^data:%w+/[%w+]+;base64,"
+
   local orig_data = doc.transforms.data_img
   doc.transforms.data_img = function(img, ctx)
+    local src = img.src
+    if type(src) == "string" and src:find("+", 1, true) and vim.base64 then
+      local mime, data = src:match("^data:(.-);base64,(.+)$")
+      if mime and data then
+        local ok_dec, raw = pcall(vim.base64.decode, data)
+        if ok_dec and type(raw) == "string" and raw ~= "" then
+          img.content = raw
+          img.src = nil
+          -- image/svg+xml -> svg。%w+ 停在 + 前面。
+          img.ext = mime:match("^image/(%w+)") or "svg"
+          img.content_id = vim.fn.sha256(raw):sub(1, 16)
+          return
+        end
+      end
+    end
     orig_data(img, ctx)
     if type(img.content) == "string" and img.content ~= "" then
       img.content_id = vim.fn.sha256(img.content):sub(1, 16)
@@ -161,28 +180,28 @@ local function patch_data_uri()
       end
     end
     local img = orig_img(ctx)
-    if not img or not raw_src or raw_src:find("+", 1, true) == nil then
+    if not img or type(raw_src) ~= "string" then
       return img
     end
-    local mime, data = raw_src:match("^data:([^;]+);base64,(.+)$")
-    if not (mime and data and vim.base64) then
-      return img
-    end
-    local ok_dec, raw = pcall(vim.base64.decode, data)
-    if not ok_dec or type(raw) ~= "string" or raw == "" then
-      return img
-    end
-    local ext = mime:match("^image/(%w+)") or "png"
-    img.content = raw
-    img.content_id = vim.fn.sha256(raw):sub(1, 16)
-    img.ext = ext
-    local root = require("snacks.image").config.cache
-    vim.fn.mkdir(root, "p")
-    img.src = root .. "/" .. img.content_id .. "-content." .. ext
-    if vim.fn.filereadable(img.src) == 0 then
-      local fd = assert(io.open(img.src, "wb"))
-      fd:write(raw)
-      fd:close()
+    -- 内置判断对不上 svg+xml，orig 不会调用 data_img。这里补上，并写成 .svg。
+    if raw_src:find(wide_data) and not raw_src:find(strict_data) then
+      img.src = raw_src
+      img.content = nil
+      doc.transforms.data_img(img, ctx)
+      if img.content and not img.src then
+        local root = require("snacks.image").config.cache
+        vim.fn.mkdir(root, "p")
+        img.src = ("%s/%s-content.%s"):format(
+          root,
+          img.content_id or vim.fn.sha256(img.content):sub(1, 16),
+          img.ext or "svg"
+        )
+        if vim.fn.filereadable(img.src) == 0 then
+          local fd = assert(io.open(img.src, "wb"))
+          fd:write(img.content)
+          fd:close()
+        end
+      end
     end
     return img
   end
@@ -211,10 +230,20 @@ local function patch_convert()
   end
 end
 
+local function allow_svg()
+  local ok, image = pcall(require, "snacks.image")
+  if not ok or type(image.config.formats) ~= "table" then
+    return
+  end
+  if not vim.tbl_contains(image.config.formats, "svg") then
+    table.insert(image.config.formats, "svg")
+  end
+end
+
 function M.setup()
   patch_convert()
   patch_data_uri()
-  require("util.hover_image").install()
+  allow_svg()
 end
 
 return M

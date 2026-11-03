@@ -32,18 +32,3 @@ vim.api.nvim_create_autocmd("FileType", {
     })
   end,
 })
-
--- hover 已是 markdown。wrap 关闭后窗口只有文本那么高，按图片高度把内容和边框一起加高。
-vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
-  group = vim.api.nvim_create_augroup("user_hover_image", { clear = true }),
-  callback = function(ev)
-    if vim.bo[ev.buf].filetype ~= "markdown" then
-      return
-    end
-    local hover = require("util.hover_image")
-    hover.prepare(ev.buf)
-    vim.schedule(function()
-      hover.grow(ev.buf)
-    end)
-  end,
-})

@@ -67,10 +67,6 @@ return {
       opts.views.hover.buf_options = vim.tbl_deep_extend("force", opts.views.hover.buf_options or {}, {
         filetype = "markdown",
       })
-      opts.views.hover.win_options = vim.tbl_deep_extend("force", opts.views.hover.win_options or {}, {
-        wrap = false,
-        linebreak = false,
-      })
     end,
   },
 

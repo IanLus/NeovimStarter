@@ -32,3 +32,26 @@ vim.api.nvim_create_autocmd("FileType", {
     })
   end,
 })
+
+-- hover 仍按 markdown 换行。图片另开一个悬浮窗，避免被 conceal 折行挤出视野。
+vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
+  group = vim.api.nvim_create_augroup("user_hover_image", { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].filetype ~= "markdown" then
+      return
+    end
+    vim.schedule(function()
+      require("util.hover_image").show(ev.buf)
+    end)
+  end,
+})
+
+vim.api.nvim_create_autocmd("WinClosed", {
+  group = vim.api.nvim_create_augroup("user_hover_image_close", { clear = true }),
+  callback = function(ev)
+    local win = tonumber(ev.match)
+    if win then
+      require("util.hover_image").on_win_closed(win)
+    end
+  end,
+})

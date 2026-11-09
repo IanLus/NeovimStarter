@@ -158,7 +158,7 @@ return {
     "folke/snacks.nvim",
     priority = 1000,
     keys = {
-      -- snacks_explorer 把 <leader>E 重映射到 <leader>fE，这里卸掉
+      { "<leader>e", false },
       { "<leader>E", false },
     },
     ---@type snacks.Config

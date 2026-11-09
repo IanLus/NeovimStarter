@@ -175,12 +175,15 @@ return {
       indent = { enabled = true },
       terminal = {
         win = {
-          -- position = "float", -- 默认bottom
-          keys = {
-            hide_slash = false,
-            hide_underscore = false,
-          },
+          position = "float", -- 默认bottom
+          -- keys = {
+          --   hide_slash = false,
+          --   hide_underscore = false,
+          -- },
         },
+      },
+      win = {
+        border = "rounded",
       },
       dashboard = {
         sections = {

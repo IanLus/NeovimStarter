@@ -2,17 +2,11 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
--- Ctrl+/ 在终端里实际是 <C-_>，两个都删掉才关得掉 Snacks 终端
-pcall(vim.keymap.del, { "n", "t" }, "<C-/>")
-pcall(vim.keymap.del, { "n", "t" }, "<C-_>")
-
 local keymap = vim.keymap
 local opts = { noremap = true, silent = true }
 
--- 与 <leader>ft 一样出现在 which-key 的 f 组
-keymap.set({ "n", "t" }, "<leader>f/", function()
-  require("luxterm.core").toggle_manager()
-end, vim.tbl_extend("force", opts, { desc = "Terminal (Luxterm)" }))
+-- Additional custom keybindings after setup
+vim.keymap.set("n", "<leader>tn", ":LuxtermNew<CR>", { desc = "New terminal" })
 
 -- Insert a line up/down in normal mode
 keymap.set("n", "O", "O<Esc>", opts)

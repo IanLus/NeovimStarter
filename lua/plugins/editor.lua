@@ -99,7 +99,7 @@ return {
     branch = "feat/config_session_buffer",
     opts = {
       keymaps = {
-        toggle_manager = "<leader>f/",
+        toggle_manager = "<C-\\>",
         prev_session = "<C-k>",
         next_session = "<C-j>",
         hide_terminal = "<C-q>",

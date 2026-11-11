@@ -383,6 +383,13 @@ local function item_filter_text(item)
   return text:match('^"(.*)"$') or text:match("^'(.*)'$") or text
 end
 
+--- 取末段词。部分服务器的 filterText 会带上已输入的分隔符前缀，
+--- 整串比较会把这种项漏判成非整词，故先归一化到末段再比。
+local function last_word_segment(text)
+  local _, segment = text:match("^(.*[^%w_])([%w_]+)$")
+  return segment or text
+end
+
 local function typed_keyword()
   local ok, keyword = pcall(function()
     return require("blink.cmp.completion.trigger.context").get_keyword()
@@ -418,7 +425,9 @@ function M.sort_deprecated_last(a, b)
 end
 
 --- 整词命中（忽略大小写）先于只命中前缀的项。
---- blink 的 exact 区分大小写，"ge" 对不上 "GE"，snippet "get" 会靠大小写加分排到字面量前面。
+--- blink 的 exact 区分大小写，全大写缩写对不上同形的小写输入，
+--- snippet 会靠大小写加分压过同名的真实项。
+--- 比较前先归一化到末段词，避免带前缀的 filterText 漏判。
 function M.sort_whole_word_first(a, b)
   local keyword = typed_keyword()
   if keyword == "" then
@@ -426,7 +435,8 @@ function M.sort_whole_word_first(a, b)
   end
   local kw = keyword:lower()
   local function whole(item)
-    return item_filter_text(item):lower() == kw
+    local text = item_filter_text(item):lower()
+    return text == kw or last_word_segment(text) == kw
   end
   local aw, bw = whole(a), whole(b)
   if aw ~= bw then

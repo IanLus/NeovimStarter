@@ -1,4 +1,4 @@
--- hover 正文保持原样换行。图片另开一个悬浮窗，不改 hover 的高度和边框。
+-- hover 旁边单开悬浮窗显示图片，不改 hover 的高度和边框。
 
 local M = {}
 
@@ -25,6 +25,16 @@ local function is_hover_buf(buf)
     return true
   end
   return vim.bo[buf].buftype == "nofile" and vim.api.nvim_buf_get_name(buf) == ""
+end
+
+--- 只处理浮窗里的缓冲，普通窗口直接跳过。
+---@param buf integer
+---@return boolean
+function M.is_float_buf(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then
+    return false
+  end
+  return float_win(buf) ~= nil
 end
 
 ---@param win integer

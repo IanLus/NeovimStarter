@@ -33,15 +33,16 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- hover 仍按 markdown 换行。图片另开一个悬浮窗，避免被 conceal 折行挤出视野。
+-- hover 旁边单开预览窗显示图片，hover 自身不动。
 vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
   group = vim.api.nvim_create_augroup("user_hover_image", { clear = true }),
   callback = function(ev)
-    if vim.bo[ev.buf].filetype ~= "markdown" then
+    local ok, mod = pcall(require, "util.hover_image")
+    if not ok or not mod.is_float_buf(ev.buf) then
       return
     end
     vim.schedule(function()
-      require("util.hover_image").show(ev.buf)
+      mod.show(ev.buf)
     end)
   end,
 })

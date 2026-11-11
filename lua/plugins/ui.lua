@@ -62,11 +62,6 @@ return {
         opts = { skip = true },
       })
       opts.presets.lsp_doc_border = true
-      opts.views = opts.views or {}
-      opts.views.hover = opts.views.hover or {}
-      opts.views.hover.buf_options = vim.tbl_deep_extend("force", opts.views.hover.buf_options or {}, {
-        filetype = "markdown",
-      })
     end,
   },
 

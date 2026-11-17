@@ -7,7 +7,7 @@
 --- 在解析配置时把 .vscode/settings.json 并进 client，并保留 lsp/*.lua 里原有的 before_init。
 local function install_neoconf_lsp_hook()
   local mt = getmetatable(vim.lsp.config)
-  if mt._cwe_neoconf then
+  if mt._user_neoconf_hook then
     return
   end
 
@@ -42,7 +42,7 @@ local function install_neoconf_lsp_hook()
     resolved.before_init = before_init
     return resolved
   end
-  mt._cwe_neoconf = true
+  mt._user_neoconf_hook = true
 end
 
 return {

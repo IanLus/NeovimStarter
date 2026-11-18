@@ -453,6 +453,36 @@ function M.setup()
   end
   M._done = true
 
+  -- blink 禁用时（大文件、scratch、录制宏等）会在 InsertEnter 整批跳过按键挂载，
+  -- <C-Space>/<A-i> 就落到内置的 i_CTRL-@（粘贴上次插入内容，空缓冲报 E29），
+  -- 表现是「两个键一起失灵」。这里补全局映射兜底：blink 正常时它的 buffer 级映射
+  -- 优先，此映射不参与；只有它没挂上时才走这里。自动弹出仍受 enabled() 约束。
+  local function manual_show()
+    local config = require("blink.cmp.config")
+    local cmp = require("blink.cmp")
+    if config.enabled() then
+      return cmp.show()
+    end
+    -- show 的真正逻辑在 vim.schedule 里跑，覆盖必须跨过那一次调度才能生效。
+    local orig = config.enabled
+    config.enabled = function()
+      return "force"
+    end
+    local ok, err = pcall(cmp.show)
+    if not ok then
+      config.enabled = orig
+      error(err)
+    end
+    vim.schedule(function()
+      config.enabled = orig
+    end)
+    return true
+  end
+
+  for _, key in ipairs({ "<C-Space>", "<A-i>" }) do
+    vim.keymap.set("i", key, manual_show, { desc = "blink.cmp: manual show" })
+  end
+
   local utils = require("blink.cmp.completion.brackets.utils")
   local orig_has = utils.has_brackets_in_front
   ---@diagnostic disable-next-line: duplicate-set-field
